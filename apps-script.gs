@@ -1,5 +1,5 @@
 /** Lahja read-only JSON adapter. Deploy as a Web App: execute as Me, access: Anyone. */
-const SPREADSHEET_ID = '1PtIalIvsOMeCrhMl5pXMU07s7-rYuK3_r-fQ_BhLm34';
+const SPREADSHEET_ID = '1-uPRGmXQo7ygtf2WxDdczal0QPHvn4rt3R8bqi12I9I';
 const ALLOWED_TABS = ['Vocabulary Mastery', 'Review Queue'];
 
 function doGet() {
