@@ -9,6 +9,6 @@
   "background_color": "#F4EFE6",
   "theme_color": "#17201D",
   "icons": [
-    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "./lahja-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any maskable" }
   ]
 }
