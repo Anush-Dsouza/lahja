@@ -1,0 +1,14 @@
+{
+  "name": "Lahja — Bahraini Arabic Revision",
+  "short_name": "Lahja",
+  "description": "A personal Bahraini and Gulf Arabic flashcard revision companion.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F4EFE6",
+  "theme_color": "#17201D",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

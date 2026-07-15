@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#17201D"/>
+  <path d="M116 120h280v272H116z" fill="#FFFAF1"/>
+  <path d="M146 151h220v14H146zm0 196h120v14H146z" fill="#D3AD62"/>
+  <text x="256" y="298" text-anchor="middle" font-size="154" font-family="Arial" fill="#DF5A43">ل</text>
+</svg>
