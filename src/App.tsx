@@ -19,13 +19,30 @@ export default function App() {
   const [sessionDone, setSessionDone] = useState(0);
   const [sessionAgain, setSessionAgain] = useState<string[]>([]);
   const [focusCategory, setFocusCategory] = useState<string | null>(null);
+  const [focusLesson, setFocusLesson] = useState('all');
+
+  const lessons = useMemo(
+    () => [...new Set(cards.map(card => card.lesson))].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    ),
+    [cards]
+  );
+
+  useEffect(() => {
+    if (focusLesson !== 'all' && !lessons.includes(focusLesson)) setFocusLesson('all');
+  }, [focusLesson, lessons]);
+
+  const lessonCards = useMemo(
+    () => focusLesson === 'all' ? cards : cards.filter(card => card.lesson === focusLesson),
+    [cards, focusLesson]
+  );
 
   const ordered = useMemo(() => {
-    const pool = focusCategory ? cards.filter(c => c.category === focusCategory) : cards;
+    const pool = focusCategory ? lessonCards.filter(c => c.category === focusCategory) : lessonCards;
     const normal = sortForReview(pool, progress);
     const againCards = sessionAgain.map(id => pool.find(c => c.id === id)).filter(Boolean) as Flashcard[];
     return [...againCards, ...normal.filter(c => !sessionAgain.includes(c.id))];
-  }, [cards, progress, sessionAgain, focusCategory]);
+  }, [lessonCards, progress, sessionAgain, focusCategory]);
   const current = ordered[0];
 
   async function sync() {
@@ -52,7 +69,7 @@ export default function App() {
   }
 
   const recentlyStrong = Object.values(progress).filter(p => p.lastRating === 'good' || p.lastRating === 'easy').sort((a,b) => (b.lastReviewedAt || '').localeCompare(a.lastReviewedAt || '')).slice(0,3);
-  const dueCount = cards.filter(c => new Date((progress[c.id] || initialState(c)).dueAt) <= new Date()).length;
+  const dueCount = lessonCards.filter(c => new Date((progress[c.id] || initialState(c)).dueAt) <= new Date()).length;
 
   return <div className="app-shell">
     <header className="topbar">
@@ -67,11 +84,19 @@ export default function App() {
         <section className="today-summary">
           <div><span>Due now</span><strong>{dueCount}</strong></div>
           <div><span>Session</span><strong>{sessionDone}</strong></div>
-          <div><span>Total phrases</span><strong>{cards.length}</strong></div>
+          <div><span>{focusLesson === 'all' ? 'Total phrases' : 'Lesson phrases'}</span><strong>{lessonCards.length}</strong></div>
         </section>
         {focusCategory && <button className="focus-banner" onClick={() => setFocusCategory(null)}>Focused practice: {focusCategory} · Clear</button>}
-        {current ? <FlashcardView key={`${current.id}-${currentStateKey(progress[current.id])}`} card={current} progress={progress[current.id]} onRate={rate}/> : <EmptyState/>}
-        <section className="mini-section"><div className="section-heading"><h2>Five-minute review</h2><span>{Math.min(8, dueCount || cards.length)} suggested</span></div><p>Start with weak and overdue phrases. “Again” loops the phrase back into this session.</p></section>
+        {current ? <FlashcardView
+          key={`${current.id}-${currentStateKey(progress[current.id])}`}
+          card={current}
+          progress={progress[current.id]}
+          lessons={lessons}
+          selectedLesson={focusLesson}
+          onLessonChange={lesson => { setFocusLesson(lesson); setFocusCategory(null); }}
+          onRate={rate}
+        /> : <EmptyState/>}
+        <section className="mini-section"><div className="section-heading"><h2>Five-minute review</h2><span>{Math.min(8, dueCount || lessonCards.length)} suggested</span></div><p>Start with weak and overdue phrases. “Again” loops the phrase back into this session.</p></section>
         <section className="mini-section"><div className="section-heading"><h2>Recently strengthened</h2></div>{recentlyStrong.length ? recentlyStrong.map(item => { const card = cards.find(c => c.id === item.cardId); return card && <div className="recent-row" key={item.cardId}><CheckCircle2 size={18}/><span dir="rtl">{card.arabic}</span><small>{item.lastRating}</small></div>; }) : <p>Your successful reviews will appear here.</p>}</section>
       </>}
       {screen === 'map' && <LearningMap cards={cards} progress={progress} onFocus={category => { setFocusCategory(category); setScreen('today'); }}/>} 

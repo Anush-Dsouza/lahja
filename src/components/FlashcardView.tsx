@@ -7,9 +7,12 @@ interface Props {
   progress?: ReviewState;
   onRate: (rating: Rating) => void;
   compact?: boolean;
+  lessons?: string[];
+  selectedLesson?: string;
+  onLessonChange?: (lesson: string) => void;
 }
 
-export default function FlashcardView({ card, onRate, compact = false }: Props) {
+export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange }: Props) {
   const [revealed, setRevealed] = useState(false);
   const speak = (text: string) => {
     if (!('speechSynthesis' in window)) return;
@@ -21,7 +24,16 @@ export default function FlashcardView({ card, onRate, compact = false }: Props) 
 
   return <section className={`study-card ${compact ? 'compact' : ''}`} aria-live="polite">
     <div className="card-topline">
-      <span className="eyebrow">Lesson {card.lesson} · {card.category}</span>
+      <div className="card-context">
+        {lessons && onLessonChange && <label className="lesson-picker">
+          <span>Revise</span>
+          <select value={selectedLesson} onChange={event => onLessonChange(event.target.value)} aria-label="Choose a lesson to revise">
+            <option value="all">All lessons</option>
+            {lessons.map(lesson => <option key={lesson} value={lesson}>Lesson {lesson}</option>)}
+          </select>
+        </label>}
+        <span className="eyebrow">Lesson {card.lesson} · {card.category}</span>
+      </div>
       <span className={`status-pill status-${(card.sheetStatus || 'new').toLowerCase()}`}>{card.sheetStatus || 'New'}</span>
     </div>
     <p className="situation">{card.front || card.reviewReason || 'Recall the meaning and say the phrase naturally.'}</p>
