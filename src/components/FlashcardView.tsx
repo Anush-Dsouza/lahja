@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Flashcard, Rating, ReviewState } from '../types';
 import { Volume2 } from './Icons';
+import { bestVoice, profileFor } from '../lib/voices';
 
 interface Props {
   card: Flashcard;
@@ -13,12 +14,13 @@ interface Props {
   statusOptions?: { value: string; label: string }[];
   selectedStatus?: string;
   onStatusChange?: (status: string) => void;
+  voiceDialect?: string;
+  voiceURI?: string;
 }
 
-export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange, statusOptions, selectedStatus = 'all', onStatusChange }: Props) {
+export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange, statusOptions, selectedStatus = 'all', onStatusChange, voiceDialect, voiceURI }: Props) {
   const [revealed, setRevealed] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voiceURI, setVoiceURI] = useState(() => localStorage.getItem('lahja-voice-uri') || 'auto');
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
     return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
   }, []);
 
-  const selectedVoice = voices.find(voice => voice.voiceURI === voiceURI) || preferredGulfVoice(voices);
+  const selectedVoice = bestVoice(voices, voiceDialect, voiceURI);
   const speak = (text: string, recordingUrl?: string) => {
     audioRef.current?.pause();
     if (recordingUrl) {
@@ -47,11 +49,6 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
     if (selectedVoice) utterance.voice = selectedVoice;
     utterance.rate = 0.78;
     window.speechSynthesis.speak(utterance);
-  };
-
-  const changeVoice = (nextVoiceURI: string) => {
-    setVoiceURI(nextVoiceURI);
-    localStorage.setItem('lahja-voice-uri', nextVoiceURI);
   };
 
   return <section className={`study-card ${compact ? 'compact' : ''}`} aria-live="polite">
@@ -82,7 +79,7 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
       <h1 dir="rtl" lang="ar">{card.arabic}</h1>
       <button className="icon-button" onClick={() => speak(card.arabic, card.audioUrl)} aria-label="Listen to Arabic phrase"><Volume2 size={22}/></button>
     </div>
-    {card.audioUrl ? <p className="voice-note">Playing a Bahraini speaker recording.</p> : voices.length > 1 && <label className="voice-picker">Voice <select value={voiceURI} onChange={event => changeVoice(event.target.value)}><option value="auto">Closest Gulf voice (automatic)</option>{voices.map(voice => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} ({voice.lang})</option>)}</select></label>}
+    {card.audioUrl ? <p className="voice-note">Playing a Bahraini speaker recording.</p> : <p className="voice-note">Voice: {profileFor(voiceDialect).label}. Change or preview it in Settings.</p>}
     {!revealed ? <button className="reveal-button" onClick={() => setRevealed(true)}>Reveal answer</button> : <>
       <div className="answer-panel">
         <p className="pronunciation" dir="ltr">{card.pronunciation || 'Pronunciation not provided'}</p>
@@ -103,15 +100,6 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
       </div>
     </>}
   </section>;
-}
-
-function preferredGulfVoice(voices: SpeechSynthesisVoice[]) {
-  const preferredLocales = ['ar-BH', 'ar-AE', 'ar-SA', 'ar-QA', 'ar-KW', 'ar-OM'];
-  for (const locale of preferredLocales) {
-    const match = voices.find(voice => voice.lang.toLowerCase() === locale.toLowerCase());
-    if (match) return match;
-  }
-  return voices[0];
 }
 
 function Detail({ label, text, rtl = false }: {label: string; text: string; rtl?: boolean}) {

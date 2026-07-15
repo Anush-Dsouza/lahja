@@ -40,6 +40,8 @@ export interface AppSettings {
   appsScriptUrl: string;
   vocabCsvUrl: string;
   reviewCsvUrl: string;
+  voiceDialect: string;
+  voiceURI: string;
 }
 
 export interface SyncResult {

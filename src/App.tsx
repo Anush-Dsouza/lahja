@@ -6,7 +6,8 @@ import { syncCards } from './lib/adapters';
 import { initialState, rateCard, sortForReview, strengthFor } from './lib/scheduler';
 import FlashcardView from './components/FlashcardView';
 import BottomNav, { type Screen } from './components/BottomNav';
-import { CheckCircle2, Cloud, CloudOff, Clock3, Download, Search, Sparkles, Trash2, Upload } from './components/Icons';
+import { CheckCircle2, Cloud, CloudOff, Clock3, Download, Search, Sparkles, Trash2, Upload, Volume2 } from './components/Icons';
+import { bestVoice, dialectProfiles, profileFor } from './lib/voices';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('today');
@@ -120,6 +121,8 @@ export default function App() {
           selectedStatus={focusStatus}
           onStatusChange={status => { setFocusStatus(status); setFocusCategory(null); }}
           onRate={rate}
+          voiceDialect={settings.voiceDialect}
+          voiceURI={settings.voiceURI}
         /> : <EmptyState/>}
         <section className="mini-section"><div className="section-heading"><h2>Five-minute review</h2><span>{Math.min(8, dueCount || reviewCards.length)} suggested</span></div><p>Start with weak and overdue phrases. “Again” loops the phrase back into this session.</p></section>
         <section className="mini-section"><div className="section-heading"><h2>Recently strengthened</h2></div>{recentlyStrong.length ? recentlyStrong.map(item => { const card = cards.find(c => c.id === item.cardId); return card && <div className="recent-row" key={item.cardId}><CheckCircle2 size={18}/><span dir="rtl">{card.arabic}</span><small>{item.lastRating}</small></div>; }) : <p>Your successful reviews will appear here.</p>}</section>
@@ -161,11 +164,53 @@ function Library({ cards, progress, onOpen }: {cards: Flashcard[]; progress: Rec
   </section>;
 }
 
+function VoiceSettings({ settings, save }: { settings: AppSettings; save: (settings: AppSettings) => void }) {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const loadVoices = () => setVoices(window.speechSynthesis.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ar')));
+    loadVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+  }, []);
+
+  const profile = profileFor(settings.voiceDialect);
+  const preview = (nextProfile = profile, nextVoiceURI = settings.voiceURI) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(nextProfile.sample);
+    const voice = bestVoice(voices, nextProfile.id, nextVoiceURI);
+    utterance.lang = voice?.lang || nextProfile.locale;
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.82;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const chooseDialect = (id: string) => {
+    const nextProfile = profileFor(id);
+    save({ ...settings, voiceDialect: id, voiceURI: 'auto' });
+    preview(nextProfile, 'auto');
+  };
+  const chooseVoice = (voiceURI: string) => {
+    save({ ...settings, voiceURI });
+    preview(profile, voiceURI);
+  };
+
+  return <div className="settings-card voice-settings"><h2>Voice & dialect</h2>
+    <p>Gulf voices are first. Selecting a dialect plays a real everyday greeting, not a formal Arabic sentence.</p>
+    <label>Dialect<select value={settings.voiceDialect} onChange={event => chooseDialect(event.target.value)}>{dialectProfiles.map(item => <option key={item.id} value={item.id}>{item.label} — {item.region}</option>)}</select></label>
+    <div className="dialect-preview"><div><span>{profile.label} preview</span><strong dir="rtl">{profile.sample}</strong><small>{profile.transliteration}</small></div><button onClick={() => preview()} aria-label={`Preview ${profile.label} voice`}><Volume2 size={18}/>Preview</button></div>
+    <label>Installed Arabic voice<select value={settings.voiceURI} onChange={event => chooseVoice(event.target.value)}><option value="auto">Best match for selected dialect (automatic)</option>{voices.map(voice => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} ({voice.lang})</option>)}</select></label>
+    <p className="voice-help">{voices.length ? `${voices.length} Arabic voice${voices.length === 1 ? '' : 's'} available on this device.` : 'Loading Arabic voices from this device…'} Real Bahraini recordings still take priority on flashcards.</p>
+  </div>;
+}
+
 function Settings({ settings, setSettings, sync, syncState, syncMessage, lastSync, onProgressImported, onReset }: {settings:AppSettings; setSettings:(s:AppSettings)=>void; sync:()=>void; syncState:string; syncMessage:string; lastSync:string|null; onProgressImported:()=>void; onReset:()=>void}) {
   const save = (next: AppSettings) => { setSettings(next); storage.saveSettings(next); };
   const exportData = () => { const blob = new Blob([JSON.stringify(storage.exportAll(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`lahja-progress-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); };
   const importData = async (file?: File) => { if(!file)return; storage.importAll(JSON.parse(await file.text())); onProgressImported(); alert('Progress imported.'); };
   return <section><div className="page-title"><span>Settings</span><h1>Data, sync and installation</h1></div>
+    <VoiceSettings settings={settings} save={save}/>
     <div className="settings-card"><h2>Data source</h2><label>Adapter<select value={settings.adapter} onChange={e=>save({...settings,adapter:e.target.value as AppSettings['adapter']})}><option value="apps-script">Public Google Sheet or Apps Script</option><option value="csv">Published CSV</option><option value="fallback">Bundled fallback only</option></select></label>
       {settings.adapter==='apps-script' && <label>Public Google Sheet or Apps Script URL<input value={settings.appsScriptUrl} onChange={e=>save({...settings,appsScriptUrl:e.target.value})} placeholder="https://docs.google.com/spreadsheets/d/.../edit or https://script.google.com/.../exec"/></label>}
       {settings.adapter==='csv' && <><label>Vocabulary Mastery CSV URL<input value={settings.vocabCsvUrl} onChange={e=>save({...settings,vocabCsvUrl:e.target.value})}/></label><label>Review Queue CSV URL (optional)<input value={settings.reviewCsvUrl} onChange={e=>save({...settings,reviewCsvUrl:e.target.value})}/></label></>}

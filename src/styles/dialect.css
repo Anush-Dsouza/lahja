@@ -1,0 +1,16 @@
+.voice-settings > p { color: #66706c; font-size: 13px; }
+.dialect-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 14px;
+  padding: 13px;
+  border: 1px solid #e9dfcf;
+  border-radius: 13px;
+  background: #fffaf1;
+}
+.dialect-preview span, .dialect-preview small { display: block; color: #66706c; font-size: 11px; }
+.dialect-preview strong { display: block; margin: 3px 0; font-family: Tahoma, sans-serif; font-size: 20px; color: #1f4538; }
+.dialect-preview button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d5c7b1; border-radius: 10px; padding: 9px 10px; background: #fff; color: #1f5b4e; font-weight: 700; }
+.voice-help { margin-bottom: 0; }
