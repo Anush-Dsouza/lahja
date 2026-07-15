@@ -7,6 +7,9 @@ export interface Flashcard {
   pronunciation: string;
   meaning?: string;
   example?: string;
+  /** A recording by a Bahraini speaker. This takes priority over browser TTS. */
+  audioUrl?: string;
+  exampleAudioUrl?: string;
   examplePronunciation?: string;
   firstLearned?: string;
   lastReviewed?: string;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Flashcard, Rating, ReviewState } from '../types';
 import { Volume2 } from './Icons';
 
@@ -17,12 +17,41 @@ interface Props {
 
 export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange, statusOptions, selectedStatus = 'all', onStatusChange }: Props) {
   const [revealed, setRevealed] = useState(false);
-  const speak = (text: string) => {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceURI, setVoiceURI] = useState(() => localStorage.getItem('lahja-voice-uri') || 'auto');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const loadVoices = () => setVoices(window.speechSynthesis.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ar')));
+    loadVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+  }, []);
+
+  const selectedVoice = voices.find(voice => voice.voiceURI === voiceURI) || preferredGulfVoice(voices);
+  const speak = (text: string, recordingUrl?: string) => {
+    audioRef.current?.pause();
+    if (recordingUrl) {
+      const recording = new Audio(recordingUrl);
+      audioRef.current = recording;
+      void recording.play().catch(() => undefined);
+      return;
+    }
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ar-BH'; utterance.rate = 0.72;
+    // Browsers rarely bundle a Bahraini voice. Prefer Saudi/UAE voices, which
+    // are closer to Gulf Arabic than a generic Arabic fallback.
+    utterance.lang = selectedVoice?.lang || 'ar-SA';
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = 0.78;
     window.speechSynthesis.speak(utterance);
+  };
+
+  const changeVoice = (nextVoiceURI: string) => {
+    setVoiceURI(nextVoiceURI);
+    localStorage.setItem('lahja-voice-uri', nextVoiceURI);
   };
 
   return <section className={`study-card ${compact ? 'compact' : ''}`} aria-live="polite">
@@ -51,15 +80,16 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
     <p className="situation">{card.front || card.reviewReason || 'Recall the meaning and say the phrase naturally.'}</p>
     <div className="arabic-row">
       <h1 dir="rtl" lang="ar">{card.arabic}</h1>
-      <button className="icon-button" onClick={() => speak(card.arabic)} aria-label="Listen to Arabic phrase"><Volume2 size={22}/></button>
+      <button className="icon-button" onClick={() => speak(card.arabic, card.audioUrl)} aria-label="Listen to Arabic phrase"><Volume2 size={22}/></button>
     </div>
+    {card.audioUrl ? <p className="voice-note">Playing a Bahraini speaker recording.</p> : voices.length > 1 && <label className="voice-picker">Voice <select value={voiceURI} onChange={event => changeVoice(event.target.value)}><option value="auto">Closest Gulf voice (automatic)</option>{voices.map(voice => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} ({voice.lang})</option>)}</select></label>}
     {!revealed ? <button className="reveal-button" onClick={() => setRevealed(true)}>Reveal answer</button> : <>
       <div className="answer-panel">
         <p className="pronunciation" dir="ltr">{card.pronunciation || 'Pronunciation not provided'}</p>
         {card.meaning ? <p className="meaning">{card.meaning}</p> : <p className="missing">English meaning is missing in the sheet.</p>}
         {card.breakdown && <Detail label="Word breakdown" text={card.breakdown}/>} 
         {card.example && <div className="detail">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><span>Bahraini example</span><button className="icon-button" onClick={() => speak(card.example!)} aria-label="Listen to Bahraini example"><Volume2 size={18}/></button></div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><span>Bahraini example</span><button className="icon-button" onClick={() => speak(card.example!, card.exampleAudioUrl)} aria-label="Listen to Bahraini example"><Volume2 size={18}/></button></div>
           <p dir="rtl" lang="ar">{card.example}</p>
         </div>}
         {card.examplePronunciation && <Detail label="Example pronunciation" text={card.examplePronunciation}/>} 
@@ -73,6 +103,15 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
       </div>
     </>}
   </section>;
+}
+
+function preferredGulfVoice(voices: SpeechSynthesisVoice[]) {
+  const preferredLocales = ['ar-BH', 'ar-AE', 'ar-SA', 'ar-QA', 'ar-KW', 'ar-OM'];
+  for (const locale of preferredLocales) {
+    const match = voices.find(voice => voice.lang.toLowerCase() === locale.toLowerCase());
+    if (match) return match;
+  }
+  return voices[0];
 }
 
 function Detail({ label, text, rtl = false }: {label: string; text: string; rtl?: boolean}) {

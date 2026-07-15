@@ -65,6 +65,8 @@ Required Vocabulary columns: `Arabic`, `English Pronunciation`, `Lesson #`.
 
 Optional fields remain empty when absent. Lahja never invents an English translation. Rows are ignored when completely empty. CSV parsing uses Papa Parse for quoted commas, quotation marks, semicolons, Unicode, and Arabic text.
 
+For natural Bahraini pronunciation, add a public MP3/WAV URL in the optional `Bahraini Audio URL` column (and `Bahrain Example Audio URL` for examples). These native recordings take precedence over browser text-to-speech. Without a recording, Lahja automatically prefers an installed Gulf Arabic voice; a voice picker appears when the device provides more than one Arabic voice.
+
 ## Scheduling model
 
 - Sheet Weak/New and Review Queue priority boost initial order.

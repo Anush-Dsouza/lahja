@@ -36,6 +36,8 @@ export function mergeRows(vocabRows: Record<string, unknown>[], reviewRows: Reco
       id, arabic, lesson: lesson || 'Unassigned', pronunciation: normalize(row['English Pronunciation']),
       meaning: normalize(row['English Meaning']) || undefined,
       example: normalize(row['Bahrain Example']) || undefined,
+      audioUrl: normalize(row['Bahraini Audio URL']) || undefined,
+      exampleAudioUrl: normalize(row['Bahrain Example Audio URL']) || undefined,
       examplePronunciation: normalize(row['Bahrain Example — English Pronunciation']) || undefined,
       firstLearned: normalize(row['First Learned']) || undefined,
       lastReviewed: normalize(row['Last Reviewed']) || undefined,
