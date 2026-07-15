@@ -20,6 +20,7 @@ export default function App() {
   const [sessionAgain, setSessionAgain] = useState<string[]>([]);
   const [focusCategory, setFocusCategory] = useState<string | null>(null);
   const [focusLesson, setFocusLesson] = useState('all');
+  const [focusStatus, setFocusStatus] = useState('all');
 
   const lessons = useMemo(
     () => [...new Set(cards.map(card => card.lesson))].sort((a, b) =>
@@ -37,12 +38,33 @@ export default function App() {
     [cards, focusLesson]
   );
 
+  const statusOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    lessonCards.forEach(card => {
+      const label = card.sheetStatus?.trim() || 'Unassigned';
+      const value = label.toLocaleLowerCase();
+      if (!options.has(value)) options.set(value, label);
+    });
+    return [...options].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [lessonCards]);
+
+  useEffect(() => {
+    if (focusStatus !== 'all' && !statusOptions.some(option => option.value === focusStatus)) setFocusStatus('all');
+  }, [focusStatus, statusOptions]);
+
+  const reviewCards = useMemo(
+    () => focusStatus === 'all'
+      ? lessonCards
+      : lessonCards.filter(card => (card.sheetStatus?.trim() || 'Unassigned').toLocaleLowerCase() === focusStatus),
+    [lessonCards, focusStatus]
+  );
+
   const ordered = useMemo(() => {
-    const pool = focusCategory ? lessonCards.filter(c => c.category === focusCategory) : lessonCards;
+    const pool = focusCategory ? reviewCards.filter(c => c.category === focusCategory) : reviewCards;
     const normal = sortForReview(pool, progress);
     const againCards = sessionAgain.map(id => pool.find(c => c.id === id)).filter(Boolean) as Flashcard[];
     return [...againCards, ...normal.filter(c => !sessionAgain.includes(c.id))];
-  }, [lessonCards, progress, sessionAgain, focusCategory]);
+  }, [reviewCards, progress, sessionAgain, focusCategory]);
   const current = ordered[0];
 
   async function sync() {
@@ -69,7 +91,7 @@ export default function App() {
   }
 
   const recentlyStrong = Object.values(progress).filter(p => p.lastRating === 'good' || p.lastRating === 'easy').sort((a,b) => (b.lastReviewedAt || '').localeCompare(a.lastReviewedAt || '')).slice(0,3);
-  const dueCount = lessonCards.filter(c => new Date((progress[c.id] || initialState(c)).dueAt) <= new Date()).length;
+  const dueCount = reviewCards.filter(c => new Date((progress[c.id] || initialState(c)).dueAt) <= new Date()).length;
 
   return <div className="app-shell">
     <header className="topbar">
@@ -84,7 +106,7 @@ export default function App() {
         <section className="today-summary">
           <div><span>Due now</span><strong>{dueCount}</strong></div>
           <div><span>Session</span><strong>{sessionDone}</strong></div>
-          <div><span>{focusLesson === 'all' ? 'Total phrases' : 'Lesson phrases'}</span><strong>{lessonCards.length}</strong></div>
+          <div><span>{focusLesson === 'all' && focusStatus === 'all' ? 'Total phrases' : 'Filtered phrases'}</span><strong>{reviewCards.length}</strong></div>
         </section>
         {focusCategory && <button className="focus-banner" onClick={() => setFocusCategory(null)}>Focused practice: {focusCategory} · Clear</button>}
         {current ? <FlashcardView
@@ -93,10 +115,13 @@ export default function App() {
           progress={progress[current.id]}
           lessons={lessons}
           selectedLesson={focusLesson}
-          onLessonChange={lesson => { setFocusLesson(lesson); setFocusCategory(null); }}
+          onLessonChange={lesson => { setFocusLesson(lesson); setFocusStatus('all'); setFocusCategory(null); }}
+          statusOptions={statusOptions}
+          selectedStatus={focusStatus}
+          onStatusChange={status => { setFocusStatus(status); setFocusCategory(null); }}
           onRate={rate}
         /> : <EmptyState/>}
-        <section className="mini-section"><div className="section-heading"><h2>Five-minute review</h2><span>{Math.min(8, dueCount || lessonCards.length)} suggested</span></div><p>Start with weak and overdue phrases. “Again” loops the phrase back into this session.</p></section>
+        <section className="mini-section"><div className="section-heading"><h2>Five-minute review</h2><span>{Math.min(8, dueCount || reviewCards.length)} suggested</span></div><p>Start with weak and overdue phrases. “Again” loops the phrase back into this session.</p></section>
         <section className="mini-section"><div className="section-heading"><h2>Recently strengthened</h2></div>{recentlyStrong.length ? recentlyStrong.map(item => { const card = cards.find(c => c.id === item.cardId); return card && <div className="recent-row" key={item.cardId}><CheckCircle2 size={18}/><span dir="rtl">{card.arabic}</span><small>{item.lastRating}</small></div>; }) : <p>Your successful reviews will appear here.</p>}</section>
       </>}
       {screen === 'map' && <LearningMap cards={cards} progress={progress} onFocus={category => { setFocusCategory(category); setScreen('today'); }}/>} 
