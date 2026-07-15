@@ -1,5 +1,5 @@
-const CACHE = 'lahja-v1';
-const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+const CACHE = 'lahja-v2';
+const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './lahja-icon.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
 });
