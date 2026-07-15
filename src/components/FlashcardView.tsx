@@ -10,9 +10,12 @@ interface Props {
   lessons?: string[];
   selectedLesson?: string;
   onLessonChange?: (lesson: string) => void;
+  statusOptions?: { value: string; label: string }[];
+  selectedStatus?: string;
+  onStatusChange?: (status: string) => void;
 }
 
-export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange }: Props) {
+export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange, statusOptions, selectedStatus = 'all', onStatusChange }: Props) {
   const [revealed, setRevealed] = useState(false);
   const speak = (text: string) => {
     if (!('speechSynthesis' in window)) return;
@@ -25,13 +28,22 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
   return <section className={`study-card ${compact ? 'compact' : ''}`} aria-live="polite">
     <div className="card-topline">
       <div className="card-context">
-        {lessons && onLessonChange && <label className="lesson-picker">
-          <span>Revise</span>
-          <select value={selectedLesson} onChange={event => onLessonChange(event.target.value)} aria-label="Choose a lesson to revise">
-            <option value="all">All lessons</option>
-            {lessons.map(lesson => <option key={lesson} value={lesson}>Lesson {lesson}</option>)}
-          </select>
-        </label>}
+        {lessons && onLessonChange && <div className="review-filters" aria-label="Choose what to revise">
+          <label className="review-filter">
+            <span>Lesson</span>
+            <select value={selectedLesson} onChange={event => onLessonChange(event.target.value)} aria-label="Choose a lesson to revise">
+              <option value="all">All lessons</option>
+              {lessons.map(lesson => <option key={lesson} value={lesson}>Lesson {lesson}</option>)}
+            </select>
+          </label>
+          {statusOptions && onStatusChange && <label className="review-filter">
+            <span>Status</span>
+            <select value={selectedStatus} onChange={event => onStatusChange(event.target.value)} aria-label="Choose a status to revise">
+              <option value="all">All statuses</option>
+              {statusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>}
+        </div>}
         <span className="eyebrow">Lesson {card.lesson} · {card.category}</span>
       </div>
       <span className={`status-pill status-${(card.sheetStatus || 'new').toLowerCase()}`}>{card.sheetStatus || 'New'}</span>
