@@ -11,10 +11,10 @@ interface Props {
 
 export default function FlashcardView({ card, onRate, compact = false }: Props) {
   const [revealed, setRevealed] = useState(false);
-  const speak = () => {
+  const speak = (text: string) => {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(card.arabic);
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ar-BH'; utterance.rate = 0.72;
     window.speechSynthesis.speak(utterance);
   };
@@ -27,14 +27,17 @@ export default function FlashcardView({ card, onRate, compact = false }: Props) 
     <p className="situation">{card.front || card.reviewReason || 'Recall the meaning and say the phrase naturally.'}</p>
     <div className="arabic-row">
       <h1 dir="rtl" lang="ar">{card.arabic}</h1>
-      <button className="icon-button" onClick={speak} aria-label="Listen to Arabic phrase"><Volume2 size={22}/></button>
+      <button className="icon-button" onClick={() => speak(card.arabic)} aria-label="Listen to Arabic phrase"><Volume2 size={22}/></button>
     </div>
     {!revealed ? <button className="reveal-button" onClick={() => setRevealed(true)}>Reveal answer</button> : <>
       <div className="answer-panel">
         <p className="pronunciation" dir="ltr">{card.pronunciation || 'Pronunciation not provided'}</p>
         {card.meaning ? <p className="meaning">{card.meaning}</p> : <p className="missing">English meaning is missing in the sheet.</p>}
         {card.breakdown && <Detail label="Word breakdown" text={card.breakdown}/>} 
-        {card.example && <Detail label="Bahraini example" text={card.example} rtl/>}
+        {card.example && <div className="detail">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><span>Bahraini example</span><button className="icon-button" onClick={() => speak(card.example!)} aria-label="Listen to Bahraini example"><Volume2 size={18}/></button></div>
+          <p dir="rtl" lang="ar">{card.example}</p>
+        </div>}
         {card.examplePronunciation && <Detail label="Example pronunciation" text={card.examplePronunciation}/>} 
         {card.pronunciationNote && <div className="coach-note"><strong>Coach note</strong><span>{card.pronunciationNote}</span></div>}
       </div>
