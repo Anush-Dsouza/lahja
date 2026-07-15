@@ -8,9 +8,7 @@ export const defaultSettings: AppSettings = {
   adapter: (import.meta.env.VITE_LAHJA_ADAPTER as AppSettings['adapter']) || 'apps-script',
   appsScriptUrl: import.meta.env.VITE_LAHJA_APPS_SCRIPT_URL || '',
   vocabCsvUrl: import.meta.env.VITE_LAHJA_VOCAB_CSV_URL || '',
-  reviewCsvUrl: import.meta.env.VITE_LAHJA_REVIEW_CSV_URL || '',
-  voiceDialect: 'bahraini',
-  voiceURI: 'auto'
+  reviewCsvUrl: import.meta.env.VITE_LAHJA_REVIEW_CSV_URL || ''
 };
 
 function read<T>(key: string, fallback: T): T {

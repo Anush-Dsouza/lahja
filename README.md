@@ -10,6 +10,7 @@ Lahja is a mobile-first personal revision PWA for conversational Bahraini/Gulf A
 - **Stable progress:** local scheduling is keyed by `Arabic phrase + lesson number`, so sheet refreshes do not overwrite ratings.
 - **Sheet status remains authoritative but read-only:** Weak/New/Priority influence ordering; local ratings do not write back to Google Sheets.
 - **Dynamic curriculum:** categories and lessons are derived from sheet values. New modules appear automatically.
+- **Consistent Gulf pronunciation:** lesson audio is pre-generated with an Apache-2.0 Saudi/Khaleeji model and bundled as static MP3 files. The same voice plays on iPhone, Android, and desktop without a cloud API or device TTS.
 
 ## Local setup
 
@@ -65,7 +66,7 @@ Required Vocabulary columns: `Arabic`, `English Pronunciation`, `Lesson #`.
 
 Optional fields remain empty when absent. Lahja never invents an English translation. Rows are ignored when completely empty. CSV parsing uses Papa Parse for quoted commas, quotation marks, semicolons, Unicode, and Arabic text.
 
-For natural Bahraini pronunciation, add a public MP3/WAV URL in the optional `Bahraini Audio URL` column (and `Bahrain Example Audio URL` for examples). These native recordings take precedence over browser text-to-speech. Without a recording, Lahja automatically prefers an installed Gulf Arabic voice; a voice picker appears when the device provides more than one Arabic voice.
+Lahja includes a fixed synthetic Gulf Arabic voice for the current lesson phrases and examples. A newly added phrase that is not in the pack temporarily uses the device's best available Gulf/Arabic speech synthesizer; regenerating and publishing the pack automatically replaces that fallback when its exact text appears in the new manifest. An explicit public MP3/WAV URL in the optional `Bahraini Audio URL` column (and `Bahrain Example Audio URL` for examples) still takes priority when supplied. See [VOICE_MODEL.md](VOICE_MODEL.md) for the model, license, and regeneration details.
 
 ## Scheduling model
 

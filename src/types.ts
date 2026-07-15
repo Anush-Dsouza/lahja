@@ -7,7 +7,7 @@ export interface Flashcard {
   pronunciation: string;
   meaning?: string;
   example?: string;
-  /** A recording by a Bahraini speaker. This takes priority over browser TTS. */
+  /** An explicit recording URL. This takes priority over the bundled Gulf voice. */
   audioUrl?: string;
   exampleAudioUrl?: string;
   examplePronunciation?: string;
@@ -40,8 +40,6 @@ export interface AppSettings {
   appsScriptUrl: string;
   vocabCsvUrl: string;
   reviewCsvUrl: string;
-  voiceDialect: string;
-  voiceURI: string;
 }
 
 export interface SyncResult {
