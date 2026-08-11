@@ -24,12 +24,9 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const speechRequestRef = useRef(0);
 
-  const selectVoice = (voices: SpeechSynthesisVoice[], arabic: boolean) => {
-    const language = arabic ? 'ar' : 'en';
-    const matchingVoices = voices.filter(voice => voice.lang.toLowerCase().startsWith(language));
-    const preferredLocales = arabic
-      ? ['ar-AE', 'ar-BH', 'ar-SA', 'ar-QA', 'ar-KW', 'ar-OM']
-      : ['en-US', 'en-GB'];
+  const selectVoice = (voices: SpeechSynthesisVoice[]) => {
+    const matchingVoices = voices.filter(voice => voice.lang.toLowerCase().startsWith('ar'));
+    const preferredLocales = ['ar-AE', 'ar-BH', 'ar-SA', 'ar-QA', 'ar-KW', 'ar-OM'];
     return preferredLocales.map(locale => matchingVoices.find(voice => voice.lang.toLowerCase() === locale.toLowerCase())).find(Boolean) || matchingVoices[0] || null;
   };
 
@@ -40,17 +37,16 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
     const requestId = ++speechRequestRef.current;
     window.speechSynthesis.cancel();
     const voices = window.speechSynthesis.getVoices();
-    const segments = text.split(/\s+—\s+/).map(segment => segment.trim()).filter(Boolean);
+    const segments = text.split(/\s+—\s+/).map(segment => segment.trim()).filter(segment => /[\u0600-\u06ff]/.test(segment));
     const speakNext = (index: number) => {
       if (requestId !== speechRequestRef.current || index >= segments.length) {
         utteranceRef.current = null;
         return;
       }
       const segment = segments[index];
-      const arabic = /[\u0600-\u06ff]/.test(segment);
-      const voice = selectVoice(voices, arabic);
+      const voice = selectVoice(voices);
       const utterance = new SpeechSynthesisUtterance(segment);
-      utterance.lang = voice?.lang || (arabic ? 'ar-AE' : 'en-US');
+      utterance.lang = voice?.lang || 'ar-AE';
       if (voice) utterance.voice = voice;
       utterance.rate = 0.8;
       utteranceRef.current = utterance;
@@ -68,7 +64,7 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
   const playCloudTts = (text: string) => {
     const requestId = ++speechRequestRef.current;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    const segments = text.split(/\s+—\s+/).map(segment => segment.trim()).filter(Boolean);
+    const segments = text.split(/\s+—\s+/).map(segment => segment.trim()).filter(segment => /[\u0600-\u06ff]/.test(segment));
     let fellBack = false;
     const fallback = () => {
       if (fellBack || requestId !== speechRequestRef.current) return;
@@ -78,8 +74,7 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
     const playNext = (index: number) => {
       if (requestId !== speechRequestRef.current || index >= segments.length) return;
       const segment = segments[index];
-      const language = /[\u0600-\u06ff]/.test(segment) ? 'ar' : 'en';
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${language}&q=${encodeURIComponent(segment)}`;
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ar&q=${encodeURIComponent(segment)}`;
       const recording = new Audio(url);
       audioRef.current = recording;
       recording.addEventListener('ended', () => playNext(index + 1), { once: true });
