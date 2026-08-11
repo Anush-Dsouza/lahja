@@ -65,6 +65,29 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
     };
     speakNext(0);
   };
+  const playCloudTts = (text: string) => {
+    const requestId = ++speechRequestRef.current;
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    const segments = text.split(/\s+—\s+/).map(segment => segment.trim()).filter(Boolean);
+    let fellBack = false;
+    const fallback = () => {
+      if (fellBack || requestId !== speechRequestRef.current) return;
+      fellBack = true;
+      speak(text);
+    };
+    const playNext = (index: number) => {
+      if (requestId !== speechRequestRef.current || index >= segments.length) return;
+      const segment = segments[index];
+      const language = /[\u0600-\u06ff]/.test(segment) ? 'ar' : 'en';
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${language}&q=${encodeURIComponent(segment)}`;
+      const recording = new Audio(url);
+      audioRef.current = recording;
+      recording.addEventListener('ended', () => playNext(index + 1), { once: true });
+      recording.addEventListener('error', fallback, { once: true });
+      void recording.play().catch(fallback);
+    };
+    playNext(0);
+  };
   const play = (text: string, recordingUrl?: string) => {
     audioRef.current?.pause();
     if (recordingUrl) {
@@ -76,13 +99,13 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
       const fallback = () => {
         if (fellBack) return;
         fellBack = true;
-        speak(text);
+        playCloudTts(text);
       };
       recording.addEventListener('error', fallback, { once: true });
       void recording.play().catch(fallback);
       return;
     }
-    speak(text);
+    playCloudTts(text);
   };
 
   return <section className={`study-card ${compact ? 'compact' : ''}`} aria-live="polite">
@@ -113,7 +136,7 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
       <h1 dir="rtl" lang="ar">{card.arabic}</h1>
       <button className="icon-button" onClick={() => play(card.arabic, phraseAudio)} disabled={!phraseAudio && !('speechSynthesis' in window)} aria-label="Listen to Arabic phrase"><Volume2 size={22}/></button>
     </div>
-    <p className="voice-note">{phraseAudio ? `Voice: ${card.audioUrl ? 'source recording' : voicePack?.voice.label || 'loading open-source Gulf voice…'}` : 'Temporary Emirati/UAE device voice: regenerate the Gulf pack to replace it automatically.'}</p>
+    <p className="voice-note">{phraseAudio ? `Voice: ${card.audioUrl ? 'source recording' : voicePack?.voice.label || 'loading open-source Gulf voice…'}` : 'Temporary online Arabic voice: regenerate the Gulf pack to replace it automatically.'}</p>
     {!revealed ? <button className="reveal-button" onClick={() => setRevealed(true)}>Reveal answer</button> : <>
       <div className="answer-panel">
         <p className="pronunciation" dir="ltr">{card.pronunciation || 'Pronunciation not provided'}</p>
