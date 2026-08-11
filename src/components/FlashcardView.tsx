@@ -21,6 +21,7 @@ interface Props {
 export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange, statusOptions, selectedStatus = 'all', onStatusChange, voicePack }: Props) {
   const [revealed, setRevealed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const loadFallbackVoice = () => {
     const voices = window.speechSynthesis.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ar'));
@@ -39,6 +40,13 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
     utterance.lang = voice?.lang || 'ar-AE';
     if (voice) utterance.voice = voice;
     utterance.rate = 0.8;
+    utteranceRef.current = utterance;
+    const releaseUtterance = () => {
+      if (utteranceRef.current === utterance) utteranceRef.current = null;
+    };
+    utterance.addEventListener('end', releaseUtterance, { once: true });
+    utterance.addEventListener('error', releaseUtterance, { once: true });
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
   };
   const play = (text: string, recordingUrl?: string) => {
