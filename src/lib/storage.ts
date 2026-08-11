@@ -6,7 +6,7 @@ const KEYS = {
 
 export const defaultSettings: AppSettings = {
   adapter: (import.meta.env.VITE_LAHJA_ADAPTER as AppSettings['adapter']) || 'apps-script',
-  appsScriptUrl: import.meta.env.VITE_LAHJA_APPS_SCRIPT_URL || '',
+  appsScriptUrl: import.meta.env.VITE_LAHJA_APPS_SCRIPT_URL || 'https://docs.google.com/spreadsheets/d/1-uPRGmXQo7ygtf2WxDdczal0QPHvn4rt3R8bqi12I9I/edit?usp=sharing',
   vocabCsvUrl: import.meta.env.VITE_LAHJA_VOCAB_CSV_URL || '',
   reviewCsvUrl: import.meta.env.VITE_LAHJA_REVIEW_CSV_URL || ''
 };
