@@ -22,36 +22,53 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
   const [revealed, setRevealed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const speechRequestRef = useRef(0);
 
-  const loadFallbackVoice = () => {
-    const voices = window.speechSynthesis.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ar'));
-    const preferredLocales = ['ar-AE', 'ar-BH', 'ar-SA', 'ar-QA', 'ar-KW', 'ar-OM'];
-    const voice = preferredLocales.map(locale => voices.find(candidate => candidate.lang.toLowerCase() === locale.toLowerCase())).find(Boolean) || voices[0] || null;
-    return voice;
+  const selectVoice = (voices: SpeechSynthesisVoice[], arabic: boolean) => {
+    const language = arabic ? 'ar' : 'en';
+    const matchingVoices = voices.filter(voice => voice.lang.toLowerCase().startsWith(language));
+    const preferredLocales = arabic
+      ? ['ar-AE', 'ar-BH', 'ar-SA', 'ar-QA', 'ar-KW', 'ar-OM']
+      : ['en-US', 'en-GB'];
+    return preferredLocales.map(locale => matchingVoices.find(voice => voice.lang.toLowerCase() === locale.toLowerCase())).find(Boolean) || matchingVoices[0] || null;
   };
 
   const phraseAudio = audioFor(card.arabic, card.audioUrl, voicePack);
   const exampleAudio = audioFor(card.example, card.exampleAudioUrl, voicePack);
   const speak = (text: string) => {
     if (!('speechSynthesis' in window)) return;
+    const requestId = ++speechRequestRef.current;
     window.speechSynthesis.cancel();
-    const voice = loadFallbackVoice();
-    const utterance = new SpeechSynthesisUtterance(text.split(' — ')[0]);
-    utterance.lang = voice?.lang || 'ar-AE';
-    if (voice) utterance.voice = voice;
-    utterance.rate = 0.8;
-    utteranceRef.current = utterance;
-    const releaseUtterance = () => {
-      if (utteranceRef.current === utterance) utteranceRef.current = null;
+    const voices = window.speechSynthesis.getVoices();
+    const segments = text.split(/\s+—\s+/).map(segment => segment.trim()).filter(Boolean);
+    const speakNext = (index: number) => {
+      if (requestId !== speechRequestRef.current || index >= segments.length) {
+        utteranceRef.current = null;
+        return;
+      }
+      const segment = segments[index];
+      const arabic = /[\u0600-\u06ff]/.test(segment);
+      const voice = selectVoice(voices, arabic);
+      const utterance = new SpeechSynthesisUtterance(segment);
+      utterance.lang = voice?.lang || (arabic ? 'ar-AE' : 'en-US');
+      if (voice) utterance.voice = voice;
+      utterance.rate = 0.8;
+      utteranceRef.current = utterance;
+      const continuePlayback = () => {
+        if (utteranceRef.current === utterance) utteranceRef.current = null;
+        speakNext(index + 1);
+      };
+      utterance.addEventListener('end', continuePlayback, { once: true });
+      utterance.addEventListener('error', continuePlayback, { once: true });
+      window.speechSynthesis.resume();
+      window.speechSynthesis.speak(utterance);
     };
-    utterance.addEventListener('end', releaseUtterance, { once: true });
-    utterance.addEventListener('error', releaseUtterance, { once: true });
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(utterance);
+    speakNext(0);
   };
   const play = (text: string, recordingUrl?: string) => {
     audioRef.current?.pause();
     if (recordingUrl) {
+      speechRequestRef.current += 1;
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       const recording = new Audio(recordingUrl);
       audioRef.current = recording;
