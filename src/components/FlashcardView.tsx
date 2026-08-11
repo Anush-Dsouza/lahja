@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Flashcard, Rating, ReviewState } from '../types';
 import { Volume2 } from './Icons';
 import type { VoicePack } from '../lib/audio';
@@ -20,39 +20,44 @@ interface Props {
 
 export default function FlashcardView({ card, onRate, compact = false, lessons, selectedLesson = 'all', onLessonChange, statusOptions, selectedStatus = 'all', onStatusChange, voicePack }: Props) {
   const [revealed, setRevealed] = useState(false);
-  const [fallbackVoice, setFallbackVoice] = useState<SpeechSynthesisVoice | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    if (!('speechSynthesis' in window)) return;
-    const loadFallbackVoice = () => {
-      const voices = window.speechSynthesis.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ar'));
-      const preferredLocales = ['ar-BH', 'ar-SA', 'ar-AE', 'ar-QA', 'ar-KW', 'ar-OM'];
-      setFallbackVoice(preferredLocales.map(locale => voices.find(voice => voice.lang.toLowerCase() === locale.toLowerCase())).find(Boolean) || voices[0] || null);
-    };
-    loadFallbackVoice();
-    window.speechSynthesis.addEventListener('voiceschanged', loadFallbackVoice);
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', loadFallbackVoice);
-  }, []);
+  const loadFallbackVoice = () => {
+    const voices = window.speechSynthesis.getVoices().filter(voice => voice.lang.toLowerCase().startsWith('ar'));
+    const preferredLocales = ['ar-AE', 'ar-BH', 'ar-SA', 'ar-QA', 'ar-KW', 'ar-OM'];
+    const voice = preferredLocales.map(locale => voices.find(candidate => candidate.lang.toLowerCase() === locale.toLowerCase())).find(Boolean) || voices[0] || null;
+    return voice;
+  };
 
   const phraseAudio = audioFor(card.arabic, card.audioUrl, voicePack);
   const exampleAudio = audioFor(card.example, card.exampleAudioUrl, voicePack);
+  const speak = (text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const voice = loadFallbackVoice();
+    const utterance = new SpeechSynthesisUtterance(text.split(' — ')[0]);
+    utterance.lang = voice?.lang || 'ar-AE';
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.8;
+    window.speechSynthesis.speak(utterance);
+  };
   const play = (text: string, recordingUrl?: string) => {
     audioRef.current?.pause();
     if (recordingUrl) {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       const recording = new Audio(recordingUrl);
       audioRef.current = recording;
-      void recording.play().catch(() => undefined);
+      let fellBack = false;
+      const fallback = () => {
+        if (fellBack) return;
+        fellBack = true;
+        speak(text);
+      };
+      recording.addEventListener('error', fallback, { once: true });
+      void recording.play().catch(fallback);
       return;
     }
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = fallbackVoice?.lang || 'ar-SA';
-    if (fallbackVoice) utterance.voice = fallbackVoice;
-    utterance.rate = 0.8;
-    window.speechSynthesis.speak(utterance);
+    speak(text);
   };
 
   return <section className={`study-card ${compact ? 'compact' : ''}`} aria-live="polite">
@@ -83,7 +88,7 @@ export default function FlashcardView({ card, onRate, compact = false, lessons, 
       <h1 dir="rtl" lang="ar">{card.arabic}</h1>
       <button className="icon-button" onClick={() => play(card.arabic, phraseAudio)} disabled={!phraseAudio && !('speechSynthesis' in window)} aria-label="Listen to Arabic phrase"><Volume2 size={22}/></button>
     </div>
-    <p className="voice-note">{phraseAudio ? `Voice: ${card.audioUrl ? 'source recording' : voicePack?.voice.label || 'loading open-source Gulf voice…'}` : 'Temporary device voice: regenerate the Gulf pack to replace it automatically.'}</p>
+    <p className="voice-note">{phraseAudio ? `Voice: ${card.audioUrl ? 'source recording' : voicePack?.voice.label || 'loading open-source Gulf voice…'}` : 'Temporary Emirati/UAE device voice: regenerate the Gulf pack to replace it automatically.'}</p>
     {!revealed ? <button className="reveal-button" onClick={() => setRevealed(true)}>Reveal answer</button> : <>
       <div className="answer-panel">
         <p className="pronunciation" dir="ltr">{card.pronunciation || 'Pronunciation not provided'}</p>
